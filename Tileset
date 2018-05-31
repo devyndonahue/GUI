@@ -1,0 +1,25 @@
+package byog.TileEngine;
+
+import byog.Core.HelperClass;
+
+import java.awt.Color;
+
+/**
+ * Contains constant tile objects, to avoid having to remake the same tiles in different parts of
+ * the code.
+
+public class Tileset {
+    public static final TETile WALL = new TETile('#', new Color(216, 128, 128), Color.darkGray,
+            "wall", "/Users/devyndonahue/Desktop/beige-tile.png");
+    public static final TETile FLOOR = new TETile('·', new Color(128, 192, 128), Color.black,
+            "floor","/Users/devyndonahue/Desktop/modern-mosaic-tiles.png");
+    public static final TETile NOTHING = new TETile(' ', Color.black, Color.black, "nothing");
+    public static final TETile FLOWER = new TETile('❀', Color.magenta, Color.pink, "flower");
+    public static final TETile SOAP = new TETile('$', Color.pink, Color.pink, "soap",
+            "/Users/devyndonahue/Desktop/soap.png");
+    public static final TETile SHAMPOO = new TETile('$', Color.green, Color.green, "shampoo",
+            "/Users/devyndonahue/Desktop/shampoo-bottle.png");
+    public static final TETile SHOWER = new TETile('S', Color.blue, Color.white, "shower",
+            "/Users/devyndonahue/Desktop/shower-head.png");
+    public static final TETile GEEK = new TETile('E', Color.white, Color.black, "EECS boi", HelperClass.person);
+}
