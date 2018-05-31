@@ -1,0 +1,126 @@
+package byog.Core;
+
+import byog.TileEngine.TERenderer;
+import byog.TileEngine.TETile;
+import byog.TileEngine.Tileset;
+
+import java.io.Serializable;
+import java.util.Random;
+import java.util.List;
+import java.util.ArrayList;
+
+
+public class Game implements Serializable {
+    TERenderer ter = new TERenderer();
+    /* Feel free to change the width and height. */
+    public static final int WIDTH = 60;
+    public static final int HEIGHT = 30;
+    private static final long serialVersionUID = 123456789123456L;
+
+    /**
+     * Method used for playing a fresh game. The game should start from the main menu.
+     */
+    public void playWithKeyboard() {
+        //brings up main menu
+        HelperClass.menu();
+        // runs the menu options
+        HelperClass.runMenuOptions();
+    }
+
+    /**
+     * Method used for autograding and testing the game code. The input string will be a series
+     * of characters (for example, "n123sswwdasdassadwas", "n123sss:q", "lwww". The game should
+     * behave exactly as if the user typed these characters into the game after playing
+     * playWithKeyboard. If the string ends in ":q", the same world should be returned as if the
+     * string did not end with q. For example "n123sss" and "n123sss:q" should return the same
+     * world. However, the behavior is slightly different. After playing with "n123sss:q", the game
+     * should save, and thus if we then called playWithInputString with the string "l", we'd expect
+     * to get the exact same world back again, since this corresponds to loading the saved game.
+     * @param input the input string to feed to your program
+     * @return the 2D TETile[][] representing the state of the world
+     */
+    public TETile[][] playWithInputString(String input) {
+        // initialize the tile rendering engine with a window of size WIDTH x HEIGHT
+        ter.initialize(WIDTH, HEIGHT);
+        // initialize tiles
+        TETile[][] world = new TETile[WIDTH][HEIGHT];
+        for (int x = 0; x < WIDTH; x += 1) {
+            for (int y = 0; y < HEIGHT; y += 1) {
+                world[x][y] = Tileset.NOTHING;
+            }
+        }
+        //keeps track of seed, got the following from stackoverflow
+        String str = input;
+        String movement = str.replaceAll("\\d+", "");
+        String savestr = ":q";
+        movement = movement.substring(1);
+        movement = movement.replace(savestr, "");
+        String seed = str.replaceAll("\\D+", "");
+        //loads previously saved world if first letter is 'l' or 'L'
+        if (str.charAt(0) == 'l' || str.charAt(0) == 'L') {
+            world = HelperClass.loadWorld();
+            Player geek = HelperClass.loadPlayer();
+            HelperClass.movePlayer(movement, world, geek);
+            ter.renderFrame(world);
+            return world;
+        }
+        long num = Long.parseLong(seed);
+        Random r = new Random(num);
+        List<Integer> allposx = new ArrayList<>();
+        List<Integer> allposy = new ArrayList<>();
+        List<Integer> allposw = new ArrayList<>();
+        List<Integer> allposh = new ArrayList<>();
+        int numrooms = RandomUtils.uniform(r, 13, 22);
+        int poscount = 0;
+        //loops until over 60% of the world is covered in FLOOR
+        for (int c = 0; c < numrooms; c++) {
+            //creates random width and height
+            int wsize = RandomUtils.uniform(r, 5, 10);
+            int hsize = RandomUtils.uniform(r, 5, 10);
+            //picks the random point for the bottom left of the rectangle
+            int randox = RandomUtils.uniform(r, 0, WIDTH);
+            int randoy = RandomUtils.uniform(r, 0, HEIGHT);
+            Pos p = new Pos(randox, randoy);
+            //creates a room using the random point above as its leftmost point
+            if (!HelperClass.isOutofBounds(p, wsize, hsize, WIDTH, HEIGHT)) {
+                HelperClass.addRect(world, p, wsize, WIDTH, hsize, HEIGHT);
+                allposx.add(p.x);
+                allposy.add(p.y);
+                allposw.add(wsize);
+                allposh.add(hsize);
+
+                poscount = poscount + 1;
+            } else {
+                world[randox][randoy] = Tileset.NOTHING;
+            }
+        }
+
+        //creates the main player, as well as the 2 objects to obtain and the end goal shower
+        Player geek = new Player(allposx.get(0) + 1, allposy.get(0) + 1, Tileset.GEEK);
+        Player shower = new Player(allposx.get(1) + 1, allposy.get(1) + 1, Tileset.SHOWER);
+        Player shampoo = new Player(allposx.get(2) + 1, allposy.get(2) + 1, Tileset.SHAMPOO);
+        Player soap = new Player(allposx.get(3) + 1, allposy.get(3) + 1, Tileset.SOAP);
+
+        //create hallways using the positions stored above
+        HelperClass.createHalls(r, poscount, world, allposx, allposy, allposw, allposh);
+        //create walls
+        HelperClass.createWalls(world);
+
+        //create characters
+        world[geek.x][geek.y] = geek.tile;
+        world[shower.x][shower.y] = shower.tile;
+        world[shampoo.x][shampoo.y] = shampoo.tile;
+        world[soap.x][soap.y] = soap.tile;
+        //handles movements
+        HelperClass.movePlayer(movement, world, geek);
+
+        if (str.toLowerCase().contains(savestr.toLowerCase())) {
+            //save game and player
+            HelperClass.saveWorld(world);
+            HelperClass.savePlayer(geek);
+        }
+        //draws the world to the screen
+        ter.renderFrame(world);
+        return world;
+    }
+}
