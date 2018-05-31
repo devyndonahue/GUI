@@ -1,0 +1,10 @@
+package byog.Core;
+
+public class Pos {
+    int x;
+    int y;
+    public Pos(int xval, int yval) {
+        x = xval;
+        y = yval;
+    }
+}
