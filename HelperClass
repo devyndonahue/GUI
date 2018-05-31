@@ -1,0 +1,709 @@
+package byog.Core;
+
+
+import byog.TileEngine.TERenderer;
+import byog.TileEngine.TETile;
+import byog.TileEngine.Tileset;
+
+
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.List;
+import edu.princeton.cs.introcs.StdDraw;
+
+import java.io.Serializable;
+import java.awt.Color;
+import java.awt.Font;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+
+//a class of helper methods
+public class HelperClass implements Serializable {
+    public static String person;
+    public static int objects_acquired = 0;
+
+    private static final long serialVersionUID = 132435465768798L;
+
+    //returns if the rect will result in an overlap with a FLOOR tile or be out of bounds
+    public static boolean isOutofBounds(Pos currpos, int width, int height,
+                                        int boardwidth, int boardheight) {
+        for (int xi = currpos.x + 1; xi < currpos.x + width; xi++) {
+            for (int yi = currpos.y + 1; yi < currpos.y + height; yi++) {
+                if (currpos.x + width >= boardwidth || currpos.y + height >= boardheight) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
+    //adds a single row of length width
+    //based on the row functions of hexagons from lab 5
+    public static void addRow(TETile[][] w, Pos currpos, int width,
+                              int boardwidth, int height, int boardheight, TETile type) {
+        for (int xi = 0; xi < width; xi += 1) {
+            int theColX = currpos.x + xi;
+            w[theColX][currpos.y] = type;
+        }
+    }
+
+    //adds a rectangle
+    //based on the add hexagon function from lab 5
+    public static void addRect(TETile[][] w, Pos currpos,
+                               int width, int boardwidth, int height, int boardheight) {
+        for (int yi = 0; yi < height; yi += 1) {
+            int thisRowY = currpos.y + yi;
+            Pos rowStartP = new Pos(currpos.x, thisRowY);
+            addRow(w, rowStartP, width, boardwidth, height, boardheight, Tileset.FLOOR);
+
+        }
+    }
+
+    public static void addHall(TETile[][] w, Pos startpoint, Pos endpoint) {
+
+        //add vertical hallway
+        int realstarty = Math.min(startpoint.y, endpoint.y);
+        int realendy = Math.max(startpoint.y, endpoint.y);
+        for (int yi = realstarty; yi <= realendy; yi++) {
+            w[startpoint.x][yi] = Tileset.FLOOR;
+        }
+
+        //add horizontal hallway
+        int realstartx = Math.min(startpoint.x, endpoint.x);
+        int realendx = Math.max(startpoint.x, endpoint.x);
+        for (int xi = realstartx; xi <= realendx; xi++) {
+            w[xi][endpoint.y] = Tileset.FLOOR;
+        }
+    }
+
+
+    public static TETile[][] loadWorld() {
+        File f = new File("world.txt");
+        if (f.exists()) {
+            try {
+                FileInputStream fs = new FileInputStream(f);
+                ObjectInputStream os = new ObjectInputStream(fs);
+                TETile[][] loadWorld = (TETile[][]) os.readObject();
+                os.close();
+                return loadWorld;
+            } catch (FileNotFoundException e) {
+                System.out.println("file not found");
+                System.exit(0);
+            } catch (IOException e) {
+                System.out.println(e);
+                System.exit(0);
+            } catch (ClassNotFoundException e) {
+                System.out.println("class not found");
+                System.exit(0);
+            }
+        }
+
+        /* In the case no World has been saved yet, we return a new one. */
+        //return new TETile[Game.WIDTH][Game.HEIGHT];
+        return null;
+    }
+
+    public static Player loadPlayer() {
+        File fp = new File("player.txt");
+        if (fp.exists()) {
+            try {
+                FileInputStream fs = new FileInputStream(fp);
+                ObjectInputStream os = new ObjectInputStream(fs);
+                Player loadPlayer = (Player) os.readObject();
+                os.close();
+                return loadPlayer;
+            } catch (FileNotFoundException e) {
+                System.out.println("file not found");
+                System.exit(0);
+            } catch (IOException e) {
+                System.out.println(e);
+                System.exit(0);
+            } catch (ClassNotFoundException e) {
+                System.out.println("class not found");
+                System.exit(0);
+            }
+        }
+
+        /* In the case no World has been saved yet, we return a new one. */
+        return null;
+    }
+
+    public static void saveWorld(TETile[][] w) {
+        File f = new File("world.txt");
+        try {
+            if (!f.exists()) {
+                f.createNewFile();
+            }
+            FileOutputStream fs = new FileOutputStream(f);
+            ObjectOutputStream os = new ObjectOutputStream(fs);
+            os.writeObject(w);
+            os.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("file not found");
+            System.exit(0);
+        } catch (IOException e) {
+            System.out.println(e);
+            System.exit(0);
+        }
+    }
+
+    public static void savePlayer(Player p) {
+        File fps = new File("player.txt");
+        try {
+            if (!fps.exists()) {
+                fps.createNewFile();
+            }
+            FileOutputStream fs = new FileOutputStream(fps);
+            ObjectOutputStream os = new ObjectOutputStream(fs);
+            os.writeObject(p);
+            os.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("file not found");
+            System.exit(0);
+        } catch (IOException e) {
+            System.out.println(e);
+            System.exit(0);
+        }
+    }
+
+    //move player up "W"
+    public static void moveUp(TETile[][] w, Player player) {
+        if (player.y + 1 < Game.HEIGHT
+                && (w[player.x][player.y + 1]).equals(Tileset.FLOOR)) {
+            w[player.x][player.y + 1] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.y += 1;
+        } else if ((w[player.x][player.y + 1]).equals(Tileset.SHAMPOO) || (w[player.x][player.y + 1]).equals(Tileset.SOAP)) {
+            w[player.x][player.y + 1] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.y += 1;
+            HelperClass.objects_acquired += 1;
+        }
+    }
+
+    //move player down "S"
+    public static void moveDown(TETile[][] w, Player player) {
+        if (player.y - 1 > 0
+                && (w[player.x][player.y - 1]).equals(Tileset.FLOOR)) {
+            w[player.x][player.y - 1] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.y -= 1;
+        } else if ((w[player.x][player.y - 1]).equals(Tileset.SHAMPOO) || (w[player.x][player.y - 1]).equals(Tileset.SOAP)) {
+            w[player.x][player.y - 1] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.y -= 1;
+            HelperClass.objects_acquired += 1;
+        }
+    }
+
+    //move player down "A"
+    public static void moveLeft(TETile[][] w, Player player) {
+        if (player.x > 0
+                && (w[player.x - 1][player.y]).equals(Tileset.FLOOR)) {
+            w[player.x - 1][player.y] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.x -= 1;
+        } else if ((w[player.x - 1][player.y]).equals(Tileset.SHAMPOO) || (w[player.x - 1][player.y]).equals(Tileset.SOAP)) {
+            w[player.x - 1][player.y] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.x -= 1;
+            HelperClass.objects_acquired += 1;
+        }
+    }
+
+    public static void moveRight(TETile[][] w, Player player) {
+        if (player.x < Game.WIDTH
+                && (w[player.x + 1][player.y]).equals(Tileset.FLOOR)) {
+            w[player.x + 1][player.y] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.x += 1;
+        } else if ((w[player.x + 1][player.y]).equals(Tileset.SHAMPOO) || (w[player.x + 1][player.y]).equals(Tileset.SOAP)) {
+            w[player.x + 1][player.y] = Tileset.GEEK;
+            w[player.x][player.y] = Tileset.FLOOR;
+            player.x += 1;
+            HelperClass.objects_acquired += 1;
+        }
+    }
+
+    public static void movePlayer(String m, TETile[][] w, Player p) {
+        //handles movements
+        //got the following loop from stackoverflow
+        for (char ch : m.toCharArray()) {
+            if (ch == ('W') || ch == ('w')) {
+                HelperClass.moveUp(w, p);
+            } else if (ch == ('A') || ch == ('a')) {
+                HelperClass.moveLeft(w, p);
+            } else if (ch == ('S') || ch == ('s')) {
+                HelperClass.moveDown(w, p);
+            } else if (ch == ('D') || ch == ('d')) {
+                HelperClass.moveRight(w, p);
+            } else if (ch == ('Q') || ch == ('q')) {
+                System.exit(0);
+                break;
+            }
+        }
+    }
+
+    public static void createWalls(TETile[][] w) {
+        //creates walls
+        int wid = Game.WIDTH;
+        int height = Game.HEIGHT;
+        for (int x2 = 0; x2 < wid; x2 += 1) {
+            for (int y2 = 0; y2 < height; y2 += 1) {
+                if ((w[x2][y2] == Tileset.FLOOR && ((y2 == 0)
+                        || (y2 == height - 2)
+                        || (x2 == 0)
+                        || (x2 == wid - 2)))) {
+                    w[x2][y2] = Tileset.WALL;
+                }
+            }
+        }
+        for (int x = 0; x < wid; x += 1) {
+            for (int y = 0; y < height; y += 1) {
+                //check for floor
+                if (w[x][y] == Tileset.FLOOR) {
+                    //check top left
+                    if (w[x - 1][y + 1] == Tileset.NOTHING) {
+                        w[x - 1][y + 1] = Tileset.WALL;
+                    }
+                    if (w[x][y + 1] == Tileset.NOTHING) {
+                        //checked top
+                        w[x][y + 1] = Tileset.WALL;
+                    }
+                    if (w[x + 1][y + 1] == Tileset.NOTHING) {
+                        //checked top right
+                        w[x + 1][y + 1] = Tileset.WALL;
+                    }
+                    if (w[x + 1][y + 1] == Tileset.NOTHING) {
+                        w[x + 1][y + 1] = Tileset.WALL;
+                    }
+                    if (w[x + 1][y] == Tileset.NOTHING) {
+                        //checked right
+                        w[x + 1][y] = Tileset.WALL;
+                    }
+                    if (w[x + 1][y] == Tileset.NOTHING) {
+                        w[x + 1][y] = Tileset.WALL;
+                    }
+                    if (w[x + 1][y] == Tileset.NOTHING) {
+                        w[x + 1][y] = Tileset.WALL;
+                    }
+                    if (w[x + 1][y - 1] == Tileset.NOTHING) {
+                        //checked bottom right
+                        w[x + 1][y - 1] = Tileset.WALL;
+                    }
+                    if (w[x][y - 1] == Tileset.NOTHING) {
+                        //checked bottom
+                        w[x][y - 1] = Tileset.WALL;
+                    }
+                    if (w[x - 1][y - 1] == Tileset.NOTHING) {
+                        //checked bottom left
+                        w[x - 1][y - 1] = Tileset.WALL;
+                    }
+                    if (w[x - 1][y] == Tileset.NOTHING) {
+                        //checked left
+                        w[x - 1][y] = Tileset.WALL;
+                    }
+                }
+            }
+        }
+    }
+
+    public static void createHalls(Random rando, int pc, TETile[][] w,
+                                   List<Integer> x, List<Integer> y, List<Integer> pw, List<Integer> ph) {
+        while (x != null && pc > 2) {
+            int spt = RandomUtils.uniform(rando, pc - 1);
+            Pos startleftpt = new Pos(x.get(spt), y.get(spt));
+            int wid = RandomUtils.uniform(rando, startleftpt.x, startleftpt.x + pw.get(spt) - 1);
+            int hi = RandomUtils.uniform(rando, startleftpt.y, startleftpt.y + ph.get(spt) - 1);
+            Pos startpt = new Pos(wid, hi);
+            x.remove(spt);
+            y.remove(spt);
+            pw.remove(spt);
+            ph.remove(spt);
+            pc = pc - 1;
+            int ept = RandomUtils.uniform(rando, pc - 1);
+            Pos endleftpt = new Pos(x.get(ept), y.get(ept));
+            int wid2 = RandomUtils.uniform(rando, endleftpt.x, endleftpt.x + pw.get(ept) - 1);
+            int hi2 = RandomUtils.uniform(rando, endleftpt.y, endleftpt.y + ph.get(ept) - 1);
+            Pos endpt = new Pos(wid2, hi2);
+            HelperClass.addHall(w, startpt, endpt);
+        }
+        //takes care of the 2 hallway points left over
+        if (pc == 2) {
+            Pos fstartleftpt = new Pos(x.get(0), y.get(0));
+            int finalwid = RandomUtils.uniform(
+                    rando, fstartleftpt.x, fstartleftpt.x + pw.get(0) - 1);
+            int finalhi = RandomUtils.uniform(
+                    rando, fstartleftpt.y, fstartleftpt.y + ph.get(0) - 1);
+            Pos fstartpt = new Pos(finalwid, finalhi);
+            Pos fendleftpt = new Pos(x.get(1), y.get(1));
+            int finalwid2 = RandomUtils.uniform(
+                    rando, fendleftpt.x, fendleftpt.x + pw.get(1) - 1);
+            int finalhi2 = RandomUtils.uniform(
+                    rando, fendleftpt.y, fendleftpt.y + ph.get(1) - 1);
+            Pos fendpt = new Pos(finalwid2, finalhi2);
+            HelperClass.addHall(w, fstartpt, fendpt);
+        }
+    }
+
+
+    public static void menu() {
+        StdDraw.clear(StdDraw.BLACK);
+        Font font = new Font("Arial", Font.BOLD, 35);
+        StdDraw.setFont(font);
+        StdDraw.setPenColor(StdDraw.PINK);
+        StdDraw.text(.5, .8, "DO EECS SHOWER?");
+        Font small = new Font("Arial", Font.ITALIC, 20);
+        StdDraw.setFont(small);
+        StdDraw.text(.5, .6, "N: New Game");
+        StdDraw.text(.5, .55, "L: Load Game");
+        StdDraw.text(.5, .5, "Q: Quit Game");
+        StdDraw.text(.5, .45, "B: Background Info (recommended)");
+        StdDraw.text(.5, .4, "P: Pick your EECS player");
+        StdDraw.show();
+    }
+
+    public static void drawFrame(String s) {
+        //TODO: Take the string and display it in the center of the screen
+        //TODO: If game is not over, display relevant game information at the top of the screen
+        StdDraw.clear();
+        Font font = new Font("Arial", Font.BOLD, 30);
+        StdDraw.setFont(font);
+        StdDraw.setPenColor(StdDraw.PINK);
+        StdDraw.text(.1, .5, s);
+        StdDraw.show();
+    }
+
+    public static void winFrame() {
+        StdDraw.clear(StdDraw.BLACK);
+        Font font = new Font("Arial", Font.BOLD, 50);
+        StdDraw.setFont(font);
+        StdDraw.setPenColor(StdDraw.PINK);
+        StdDraw.text(20 * 16, 35 * 16, "SHOWER TIME!");
+        StdDraw.show();
+    }
+
+    public static String solicitNCharsInput() {
+        String seed = "";
+        double xcoord = .1;
+        while (true) {
+            if (StdDraw.hasNextKeyTyped()) {
+                String currstr = Character.toString(StdDraw.nextKeyTyped());
+                if (currstr.equals("s") || currstr.equals("S")) {
+                    return seed;
+                }
+                StdDraw.text(xcoord, .5, currstr);
+                xcoord += .1;
+                seed += currstr;
+            }
+        }
+    }
+
+    public static void playGameNew() {
+        nMenu();
+        int objects_acquired = 0;
+        String seed = solicitNCharsInput();// get seed here
+        long numseed = Long.parseLong(seed);
+        Random num = new Random(numseed);
+        twoObjects newworld = createWorld(num);
+        TERenderer ter = new TERenderer();
+        while (true) {
+            try {
+                int mouseX = (int) StdDraw.mouseX();
+                int mouseY = (int) StdDraw.mouseY();
+                Font smallFont = new Font("Arial", Font.PLAIN, 10);
+                StdDraw.setFont(smallFont);
+                StdDraw.setPenColor(StdDraw.WHITE);
+                if (newworld.world[mouseX][mouseY].equals(Tileset.WALL)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "WALL: WATCH OUT THEY HURT");
+                }
+                if (newworld.world[mouseX][mouseY].equals(Tileset.FLOOR)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "FLOOR: BE CAREFUL, WATER MAKES IT SLIPPERY");
+                }
+                if (newworld.world[mouseX][mouseY].equals(Tileset.NOTHING)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "OUTSIDE: BEWARE - THE WILD OUTDOORS ");
+                }
+                if (newworld.world[mouseX][mouseY].equals(Tileset.SHAMPOO)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "SHAMPOO: RINSE, LATHER, AND REPEAT");
+                }
+                if (newworld.world[mouseX][mouseY].equals(Tileset.GEEK)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "CHARACTER: EECS BOI");
+                }
+                if (newworld.world[mouseX][mouseY].equals(Tileset.SHOWER)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "SHOWER-an enclosure in which a person stands under a spray of water to wash");
+                }
+                StdDraw.line(0, Game.HEIGHT, Game.WIDTH, Game.HEIGHT);
+                StdDraw.show();
+            } catch (ArrayIndexOutOfBoundsException e) {
+
+            }
+            ter.renderFrame(newworld.world);
+            if (StdDraw.hasNextKeyTyped()) {
+                char movement = StdDraw.nextKeyTyped();
+                switch (movement) {
+                    case 'w':
+                        moveUp(newworld.world, newworld.player);
+                        break;
+                    case 's':
+                        moveDown(newworld.world, newworld.player);
+                        break;
+                    case 'a':
+                        moveLeft(newworld.world, newworld.player);
+                        break;
+                    case 'd':
+                        moveRight(newworld.world, newworld.player);
+                        break;
+                    case 'q':
+                        saveWorld(newworld.world);
+                        savePlayer(newworld.player);
+                        System.exit(0);
+                        break;
+                }
+                StdDraw.clear();
+                ter.renderFrame(newworld.world);
+            }
+        }
+    }
+
+    public static void playGameLoad() {
+        TETile[][] loadedworld = loadWorld();
+        Player loadedplayer = loadPlayer();
+        twoObjects loadtwo = new twoObjects(loadedworld, loadedplayer);
+        TERenderer ter = new TERenderer();
+        // initialize the tile rendering engine with a window of size WIDTH x HEIGHT
+        ter.initialize(Game.WIDTH, Game.HEIGHT + 2);
+        ter.renderFrame(loadtwo.world);
+        while (true) {
+            try {
+                int mouseX = (int) StdDraw.mouseX();
+                int mouseY = (int) StdDraw.mouseY();
+                Font smallFont = new Font("Arial", Font.PLAIN, 10);
+                StdDraw.setFont(smallFont);
+                StdDraw.setPenColor(StdDraw.WHITE);
+                if (loadtwo.world[mouseX][mouseY].equals(Tileset.WALL)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "WALL: WATCH OUT THEY HURT");
+                }
+                if (loadtwo.world[mouseX][mouseY].equals(Tileset.FLOOR)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "FLOOR: BE CAREFUL, WATER MAKES IT SLIPPERY");
+                }
+                if (loadtwo.world[mouseX][mouseY].equals(Tileset.NOTHING)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "OUTSIDE: BEWARE - THE WILD OUTDOORS ");
+                }
+                if (loadtwo.world[mouseX][mouseY].equals(Tileset.SHAMPOO)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "SHAMPOO: RINSE, LATHER, AND REPEAT");
+                }
+                if (loadtwo.world[mouseX][mouseY].equals(Tileset.GEEK)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "CHARACTER: EECS BOI");
+                }
+                if (loadtwo.world[mouseX][mouseY].equals(Tileset.SHOWER)) {
+                    StdDraw.textLeft(1, Game.HEIGHT + .5, "SHOWER-(N)an enclosure in which a person stands under a spray of water to wash");
+                }
+                StdDraw.line(0, Game.HEIGHT, Game.WIDTH, Game.HEIGHT);
+                StdDraw.show();
+            } catch (ArrayIndexOutOfBoundsException e) {
+
+            }
+            ter.renderFrame(loadtwo.world);
+            if (StdDraw.hasNextKeyTyped()) {
+                char movement = StdDraw.nextKeyTyped();
+                switch (movement) {
+                    case 'w':
+                        moveUp(loadtwo.world, loadtwo.player);
+                        break;
+                    case 's':
+                        moveDown(loadtwo.world, loadtwo.player);
+                        break;
+                    case 'a':
+                        moveLeft(loadtwo.world, loadtwo.player);
+                        break;
+                    case 'd':
+                        moveRight(loadtwo.world, loadtwo.player);
+                        break;
+                    case 'q':
+                        saveWorld(loadtwo.world);
+                        savePlayer(loadtwo.player);
+                        System.exit(0);
+                        break;
+                    default:
+                }
+                StdDraw.clear();
+                ter.renderFrame(loadtwo.world);
+            }
+        }
+    }
+
+
+    public static void runMenuOptions() {
+        while (true) {
+            if (StdDraw.hasNextKeyTyped()) {
+                char c = StdDraw.nextKeyTyped();
+                switch (c) {
+                    case 'b':
+                        StdDraw.clear(StdDraw.BLACK);
+                        Font font = new Font("Arial", Font.PLAIN, 20);
+                        StdDraw.setFont(font);
+                        StdDraw.setPenColor(StdDraw.PINK);
+                        StdDraw.text(.5, .8, "Not so long ago, the UC Berkeley");
+                        StdDraw.text(.5, .75, "Memes for Edgy Teens Facebook page");
+                        StdDraw.text(.5, .7, "was founded as a place for students from Berkeley");
+                        StdDraw.text(.5, .65, "(now from campuses across the country) to laugh about");
+                        StdDraw.text(.5, .6, "our pain. As various memes started flooding the page,");
+                        StdDraw.text(.5, .55, "one thing became clear: EECS majors do not shower. ");
+                        StdDraw.text(.5, .5, "");
+                        StdDraw.text(.5, .45, "This game is meant to help change that; it trains");
+                        StdDraw.text(.5, .4, "EECS bois to find showers the best way they know how:");
+                        StdDraw.text(.5, .35, "through a computer program.");
+                        StdDraw.text(.5, .1, "Press 'p' to pick your EECS boi");
+                        StdDraw.show();
+                        break;
+                    case 'B':
+                        StdDraw.clear(StdDraw.BLACK);
+                        Font fonts = new Font("Arial", Font.PLAIN, 20);
+                        StdDraw.setFont(fonts);
+                        StdDraw.setPenColor(StdDraw.PINK);
+                        StdDraw.text(.5, .8, "Not so long ago, the UC Berkeley");
+                        StdDraw.text(.5, .75, "Memes for Edgy Teens Facebook page");
+                        StdDraw.text(.5, .7, "was founded as a place for students from Berkeley,");
+                        StdDraw.text(.5, .65, "(now from campuses across the country) to laugh about");
+                        StdDraw.text(.5, .6, "our pain. As various memes started flooding the page,");
+                        StdDraw.text(.5, .55, "one thing became clear: EECS majors do not shower. ");
+                        StdDraw.text(.5, .5, "");
+                        StdDraw.text(.5, .45, "This game is meant to help change that; it trains");
+                        StdDraw.text(.5, .4, "EECS bois to find showers the best way they know how:");
+                        StdDraw.text(.5, .35, "through a computer program.");
+                        StdDraw.show();
+                        break;
+                    case 'p':
+                        choosePlayer();
+                        playGameNew();
+                        break;
+                    case 'P':
+                        choosePlayer();
+                        playGameNew();
+                        break;
+                    case 'N':
+                        playGameNew();
+                        break;
+                    case 'n':
+                        playGameNew();
+                        break;
+                    case 'l':
+                        playGameLoad();
+                        break;
+                    case 'L':
+                        playGameLoad();
+                        break;
+                }
+            }
+        }
+    }
+
+    public static String choosePlayer() {
+        StdDraw.clear(StdDraw.BLACK);
+        Font fonts2 = new Font("Arial", Font.PLAIN, 22);
+        StdDraw.setFont(fonts2);
+        StdDraw.text(.5, .7, "Press 'a' for Random EECS boi");
+        StdDraw.text(.5, .6, "Press 'b' for Hug");
+        StdDraw.text(.5, .5, "Press 'c' for Hilfinger");
+        StdDraw.text(.5, .4, "Press 'd' for Daddy Denero");
+        while (true) {
+            if (StdDraw.hasNextKeyTyped()) {
+                char player = StdDraw.nextKeyTyped();
+                switch (player) {
+                    case 'a':
+                        person = "/Users/devyndonahue/Desktop/computer-geek.png";
+                        return person;
+                    case 'b':
+                        person = "/Users/devyndonahue/Desktop/josh_hug.png";
+                        return person;
+                    case 'c':
+                        person = "/Users/devyndonahue/Desktop/paul-hilfinger.png";
+                        return person;
+                    case 'd':
+                        person = "/Users/devyndonahue/Desktop/DeNero200.png";
+                        return person;
+                }
+            }
+        }
+    }
+
+    public static void nMenu() {
+        StdDraw.clear(StdDraw.BLACK);
+        Font font = new Font("Arial", Font.BOLD, 35);
+        StdDraw.setFont(font);
+        StdDraw.setPenColor(StdDraw.PINK);
+        StdDraw.text(.5, .8, "TYPE YOUR SEED -> PRESS S");
+        StdDraw.show();
+    }
+
+    public static twoObjects createWorld(Random r) {
+        TERenderer ter = new TERenderer();
+        // initialize the tile rendering engine with a window of size WIDTH x HEIGHT
+        ter.initialize(Game.WIDTH, Game.HEIGHT + 2);
+
+        TETile[][] world = new TETile[Game.WIDTH][Game.HEIGHT];
+        for (int x = 0; x < Game.WIDTH; x += 1) {
+            for (int y = 0; y < Game.HEIGHT; y += 1) {
+                world[x][y] = Tileset.NOTHING;
+            }
+        }
+        List<Integer> allposx = new ArrayList<>();
+        List<Integer> allposy = new ArrayList<>();
+        List<Integer> allposw = new ArrayList<>();
+        List<Integer> allposh = new ArrayList<>();
+        int numrooms = RandomUtils.uniform(r, 13, 22);
+        int poscount = 0;
+        //loops until over 60% of the world is covered in FLOOR
+        for (int c = 0; c < numrooms; c++) {
+            //creates random width and height
+            int wsize = RandomUtils.uniform(r, 5, 10);
+            int hsize = RandomUtils.uniform(r, 5, 10);
+            //picks the random point for the bottom left of the rectangle
+            int randox = RandomUtils.uniform(r, 0, Game.WIDTH);
+            int randoy = RandomUtils.uniform(r, 0, Game.HEIGHT);
+            Pos p = new Pos(randox, randoy);
+            //creates a room using the random point above as its leftmost point
+            if (!HelperClass.isOutofBounds(p, wsize, hsize, Game.WIDTH, Game.HEIGHT)) {
+                HelperClass.addRect(world, p, wsize, Game.WIDTH, hsize, Game.HEIGHT);
+                allposx.add(p.x);
+                allposy.add(p.y);
+                allposw.add(wsize);
+                allposh.add(hsize);
+
+                poscount = poscount + 1;
+            } else {
+                world[randox][randoy] = Tileset.NOTHING;
+            }
+        }
+
+        //creates the main player, as well as the 2 objects to obtain and the end goal shower
+        Player geek = new Player(allposx.get(0) + 1, allposy.get(0) + 1, Tileset.GEEK);
+        Player shower = new Player(allposx.get(1) + 1, allposy.get(1) + 1, Tileset.SHOWER);
+        Player shampoo = new Player(allposx.get(2) + 1, allposy.get(2) + 1, Tileset.SHAMPOO);
+        Player soap = new Player(allposx.get(3) + 1, allposy.get(3) + 1, Tileset.SOAP);
+
+        //create hallways using the positions stored above
+        HelperClass.createHalls(r, poscount, world, allposx, allposy, allposw, allposh);
+        //create walls
+        HelperClass.createWalls(world);
+
+        //create characters
+        world[geek.x][geek.y] = geek.tile;
+        world[shower.x][shower.y] = shower.tile;
+        world[shampoo.x][shampoo.y] = shampoo.tile;
+        world[soap.x][soap.y] = soap.tile;
+
+        ter.renderFrame(world);
+        twoObjects two = new twoObjects(world, geek);
+        return two;
+    }
+}
+
+
+
